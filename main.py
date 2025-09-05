@@ -2,6 +2,18 @@ import asyncio
 import os
 
 from aiohttp import web
+
+async def healthcheck(request):
+    return web.Response(text="I’m alive ✅")
+
+def main():
+    app = web.Application()
+    app.router.add_get("/", healthcheck)   # для UptimeRobot
+    app.router.add_post("/webhook", handle_webhook)  # твой Telegram webhook
+    app.on_startup.append(on_startup)
+    app.on_shutdown.append(on_shutdown)
+    web.run_app(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
+
 from aiogram import Bot, Dispatcher, types
 
 # Твой токен из переменных окружения Koyeb
