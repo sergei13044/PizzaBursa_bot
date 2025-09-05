@@ -1,39 +1,37 @@
-import os
 import asyncio
+import os
+
 from aiohttp import web
 from aiogram import Bot, Dispatcher, types
-from aiogram.filters import Command
 
+# Твой токен из переменных окружения Koyeb
 TOKEN = os.getenv("BOT_TOKEN")
-WEBHOOK_PATH = f"/webhook/{TOKEN}"
-WEBHOOK_URL = f"https://{os.getenv('KOYEB_APP_NAME')}.koyeb.app{WEBHOOK_PATH}"
+
+# Адрес, куда Telegram будет слать апдейты
+WEBHOOK_HOST = "https://empty-flora-bursa-b920ea75.koyeb.app"
+WEBHOOK_PATH = "/webhook"
+WEBHOOK_URL = f"{WEBHOOK_HOST}{WEBHOOK_PATH}"
 
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
 
 
-# --- Хэндлеры ---
-@dp.message(Command("start"))
-async def start_handler(message: types.Message):
-    await message.answer("Привет! Я твой PizzaBursa бот 🍕")
-
-
 @dp.message()
-async def echo_handler(message: types.Message):
-    await message.answer(f"Ты написал: {message.text}")
+async def echo(message: types.Message):
+    await message.answer(f"Привет! Ты написал: {message.text}")
 
 
-# --- Webhook ---
 async def on_startup(app):
-    await bot.set_webhook(WEBHOOK_URL)
+    # Удаляем старый вебхук и ставим новый с таймаутом
+    await bot.delete_webhook()
+    await bot.set_webhook(WEBHOOK_URL, request_timeout=60)
 
 
 async def on_shutdown(app):
-    await bot.delete_webhook()
     await bot.session.close()
 
 
-async def handle_webhook(request):
+async def handle(request):
     update = types.Update(**await request.json())
     await dp.feed_update(bot, update)
     return web.Response()
@@ -41,9 +39,11 @@ async def handle_webhook(request):
 
 def main():
     app = web.Application()
-    app.router.add_post(WEBHOOK_PATH, handle_webhook)
+    app.router.add_post(WEBHOOK_PATH, handle)
+
     app.on_startup.append(on_startup)
     app.on_shutdown.append(on_shutdown)
+
     web.run_app(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
 
 
